@@ -53,7 +53,20 @@ pub async fn handle_generate_command(config: CliConfig) -> Result<(), anyhow::Er
     let git_diff_output = Command::new("git").arg("diff").arg("--staged").output()?;
     let git_diff_str = String::from_utf8(git_diff_output.stdout)?;
 
+    let git_log_output = Command::new("git")
+        .arg("log")
+        .arg("-5")
+        .arg("--pretty=format:--Commit--%nSubject: %s%nBody:%n%b")
+        .output()?;
+    let git_log_str = String::from_utf8(git_log_output.stdout)?;
+
     let mut prompt_str = PROMPT_STR.to_string().clone();
+
+    prompt_str.push_str("\n\n--- Контекст: Последние 5 коммитов ---\n");
+    prompt_str.push_str(git_log_str.trim());
+    prompt_str.push_str("\n-------------------------------------\n\n");
+
+    prompt_str.push_str("Вот изменения, которые нужно проанализировать для нового сообщения коммита (git diff --staged):\n");
     prompt_str.push_str(git_diff_str.as_str());
 
     let generated_commit_message = generate_commit_message(prompt_str, api_key).await?;
