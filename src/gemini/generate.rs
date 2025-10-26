@@ -40,6 +40,18 @@ struct GenerateContentResponse {
 }
 
 const PROMPT_STR: &str = "На основе следующего git diff, сгенерируй краткое и содержательное сообщение коммита на английском языке, используя стандарт Conventional Commits (например, feat:, fix:, docs:), не включая никаких пояснительных слов, только само сообщение: \n\n";
+const MAX_DIFF_SIZE: usize = 20000;
+
+fn truncate_diff(diff: &str) -> String {
+    if diff.len() <= MAX_DIFF_SIZE {
+        return diff.to_string();
+    }
+    
+    println!("⚠️ Diff слишком большой ({} байт). Обрезаем до {} байт для экономии токенов.", diff.len(), MAX_DIFF_SIZE);
+    
+    let truncated = diff.chars().take(MAX_DIFF_SIZE).collect::<String>();
+    format!("{}\n\n... (diff усечен из-за большого размера) ...", truncated)
+}
 
 pub async fn handle_generate_command(config: CliConfig) -> Result<(), anyhow::Error> {
     let api_key = match config.gemini_api_key {
@@ -52,6 +64,7 @@ pub async fn handle_generate_command(config: CliConfig) -> Result<(), anyhow::Er
 
     let git_diff_output = Command::new("git").arg("diff").arg("--staged").output()?;
     let git_diff_str = String::from_utf8(git_diff_output.stdout)?;
+    let git_diff_str = truncate_diff(&git_diff_str);
 
     let git_log_output = Command::new("git")
         .arg("log")
@@ -60,7 +73,7 @@ pub async fn handle_generate_command(config: CliConfig) -> Result<(), anyhow::Er
         .output()?;
     let git_log_str = String::from_utf8(git_log_output.stdout)?;
 
-    let mut prompt_str = PROMPT_STR.to_string().clone();
+    let mut prompt_str = PROMPT_STR.to_string();
 
     prompt_str.push_str("\n\n--- Контекст: Последние 5 коммитов ---\n");
     prompt_str.push_str(git_log_str.trim());
@@ -81,7 +94,8 @@ async fn generate_commit_message(
     api_key: String,
 ) -> Result<String, anyhow::Error> {
     let client = Client::builder()
-        .connect_timeout(Duration::from_secs(120))
+        .connect_timeout(Duration::from_secs(30))
+        .timeout(Duration::from_secs(300))
         .build()?;
     let url =
         "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent";
