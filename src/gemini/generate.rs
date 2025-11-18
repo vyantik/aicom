@@ -40,6 +40,8 @@ struct GenerateContentResponse {
 }
 
 const PROMPT_STR: &str = "На основе следующего git diff, сгенерируй краткое и содержательное сообщение коммита на английском языке, используя стандарт Conventional Commits (например, feat:, fix:, docs:), не включая никаких пояснительных слов, только само сообщение: \n\n";
+
+const PROMPT_STR_WITH_DESCRIPTION: &str = "На основе следующего git diff, сгенерируй сообщение коммита на английском языке, используя стандарт Conventional Commits (например, feat:, fix:, docs:). Сообщение должно состоять из двух частей:\n1. Первая строка - краткий subject (максимум 72 символа)\n2. Пустая строка\n3. Подробное описание (body) с объяснением что и почему было изменено\n\nНе включай никаких пояснительных слов, только само сообщение коммита: \n\n";
 const MAX_DIFF_SIZE: usize = 20000;
 
 fn truncate_diff(diff: &str) -> String {
@@ -60,7 +62,10 @@ fn truncate_diff(diff: &str) -> String {
     )
 }
 
-pub async fn handle_generate_command(config: CliConfig) -> Result<(), anyhow::Error> {
+pub async fn handle_generate_command(
+    config: CliConfig,
+    with_description: bool,
+) -> Result<(), anyhow::Error> {
     let api_key = match config.gemini_api_key {
         Some(key) => key,
         None => {
@@ -80,7 +85,13 @@ pub async fn handle_generate_command(config: CliConfig) -> Result<(), anyhow::Er
         .output()?;
     let git_log_str = String::from_utf8(git_log_output.stdout)?;
 
-    let mut prompt_str = PROMPT_STR.to_string();
+    let base_prompt = if with_description {
+        PROMPT_STR_WITH_DESCRIPTION
+    } else {
+        PROMPT_STR
+    };
+
+    let mut prompt_str = base_prompt.to_string();
 
     prompt_str.push_str("\n\n--- Контекст: Последние 5 коммитов ---\n");
     prompt_str.push_str(git_log_str.trim());

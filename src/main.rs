@@ -23,8 +23,8 @@ async fn main() -> Result<(), anyhow::Error> {
                 println!("⚠️ Токен сохранен, но похоже, он недействителен.");
             }
         }
-        Commands::Generate => {
-            handle_generate_command(config).await?;
+        Commands::Generate { description } => {
+            handle_generate_command(config, description).await?;
         }
     }
 

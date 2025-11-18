@@ -9,6 +9,11 @@ pub struct Cli {
 
 #[derive(Subcommand, Debug)]
 pub enum Commands {
-    Login { token: String },
-    Generate,
+    Login {
+        token: String,
+    },
+    Generate {
+        #[arg(short = 'd', long = "description")]
+        description: bool,
+    },
 }
