@@ -1,13 +1,8 @@
-use std::time::Duration;
-
-use reqwest::Client;
-
 use crate::gemini::generate::{Content, GenerateContentRequest, Part};
+use crate::gemini::http_client::create_client_with_long_timeout;
 
 pub async fn is_api_key_valid(token: &str) -> Result<bool, anyhow::Error> {
-    let client = Client::builder()
-        .connect_timeout(Duration::from_secs(120))
-        .build()?;
+    let client = create_client_with_long_timeout()?;
     let url =
         "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent";
 

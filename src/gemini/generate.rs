@@ -1,8 +1,8 @@
-use reqwest::Client;
 use serde::{Deserialize, Serialize};
 
 use crate::cli_config::CliConfig;
-use std::{process::Command, time::Duration};
+use crate::gemini::http_client::create_client_with_proxy;
+use std::process::Command;
 
 #[derive(Serialize)]
 pub struct Part {
@@ -46,11 +46,18 @@ fn truncate_diff(diff: &str) -> String {
     if diff.len() <= MAX_DIFF_SIZE {
         return diff.to_string();
     }
-    
-    println!("⚠️ Diff слишком большой ({} байт). Обрезаем до {} байт для экономии токенов.", diff.len(), MAX_DIFF_SIZE);
-    
+
+    println!(
+        "⚠️ Diff слишком большой ({} байт). Обрезаем до {} байт для экономии токенов.",
+        diff.len(),
+        MAX_DIFF_SIZE
+    );
+
     let truncated = diff.chars().take(MAX_DIFF_SIZE).collect::<String>();
-    format!("{}\n\n... (diff усечен из-за большого размера) ...", truncated)
+    format!(
+        "{}\n\n... (diff усечен из-за большого размера) ...",
+        truncated
+    )
 }
 
 pub async fn handle_generate_command(config: CliConfig) -> Result<(), anyhow::Error> {
@@ -93,10 +100,7 @@ async fn generate_commit_message(
     prompt_str: String,
     api_key: String,
 ) -> Result<String, anyhow::Error> {
-    let client = Client::builder()
-        .connect_timeout(Duration::from_secs(30))
-        .timeout(Duration::from_secs(300))
-        .build()?;
+    let client = create_client_with_proxy()?;
     let url =
         "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent";
 
